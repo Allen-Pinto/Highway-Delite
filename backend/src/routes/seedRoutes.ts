@@ -1,6 +1,5 @@
 // backend/src/routes/seedRoutes.ts
 import express from 'express';
-import mongoose from 'mongoose';
 import { Experience } from '../models/Experience';
 import { PromoCode } from '../models/PromoCode';
 
@@ -444,7 +443,8 @@ router.post('/seed', async (req, res) => {
     const promoCodes = await PromoCode.insertMany(promoCodesData);
     console.log(`✅ Inserted ${promoCodes.length} promo codes`);
 
-    res.json({
+    // FIX: Return the response here
+    return res.json({
       success: true,
       message: 'Database seeded successfully!',
       data: {
@@ -455,7 +455,8 @@ router.post('/seed', async (req, res) => {
 
   } catch (error: any) {
     console.error('❌ Seeding failed:', error);
-    res.status(500).json({
+    // FIX: Return the error response here too
+    return res.status(500).json({
       success: false,
       error: 'Seeding failed',
       message: error.message
