@@ -12,6 +12,7 @@ import { errorHandler, notFound } from './middleware/errorHandler';
 import experienceRoutes from './routes/experience.routes';
 import bookingRoutes from './routes/booking.routes';
 import promoRoutes from './routes/promo.routes';
+import seedRoutes from './routes/seedRoutes'; // NEW: Import seed routes
 
 // Create Express app
 const app: Application = express();
@@ -41,7 +42,7 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Cookie parser (optional, keep if you need cookies for other purposes)
+// Cookie parser
 app.use(cookieParser());
 
 // Logging middleware
@@ -77,6 +78,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/experiences', experienceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/promo', promoRoutes);
+app.use('/api/admin', seedRoutes); // NEW: Add seed routes
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
@@ -108,7 +110,6 @@ app.listen(PORT, () => {
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err: Error) => {
   console.error('❌ Unhandled Promise Rejection:', err);
-  // Close server & exit process
   process.exit(1);
 });
 
