@@ -20,7 +20,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'),
   RATE_LIMIT_MAX_REQUESTS: z.string().default('100'),
   
-  CORS_ORIGINS: z.string().default('http://localhost:5173')
+  CORS_ORIGINS: z.string().default('https://highway-delite-plum-seven.vercel.app')
 });
 
 const parseEnv = () => {
@@ -77,7 +77,7 @@ export const config = {
     port: env.SMTP_PORT ? parseInt(env.SMTP_PORT, 10) : undefined,
     user: env.SMTP_USER,
     password: env.SMTP_PASSWORD,
-    from: env.EMAIL_FROM || 'BookIt <noreply@bookit.com>',
+    from: env.EMAIL_FROM || 'Highway Delite <noreply@highwaydelite.com>',
   },
   
   rateLimit: {
