@@ -74,11 +74,20 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: config.server.nodeEnv,
+  });
+});
+
 // API routes
 app.use('/api/experiences', experienceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/promo', promoRoutes);
-app.use('/api/admin', seedRoutes); // NEW: Add seed routes
+app.use('/api/admin', seedRoutes); 
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
