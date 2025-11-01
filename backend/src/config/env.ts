@@ -20,12 +20,11 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'),
   RATE_LIMIT_MAX_REQUESTS: z.string().default('100'),
   
-  CORS_ORIGINS: z.string().default('https://highway-delite-plum-seven.vercel.app')
+  CORS_ORIGINS: z.string().default('https://highway-delite-phi.vercel.app')
 });
 
 const parseEnv = () => {
   try {
-    // Only validate the variables we actually use
     const envVars = {
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
