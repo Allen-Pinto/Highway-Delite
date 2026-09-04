@@ -28,7 +28,6 @@ export default function ExperienceDetails() {
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [fetchingSlots, setFetchingSlots] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -42,29 +41,21 @@ export default function ExperienceDetails() {
     }
   }, [selectedDate, id]);
 
-  // ========== FIXED: Removed .data from all API responses ==========
-  
   const fetchExperience = async () => {
     try {
       setLoading(true);
-      
-      // Fetch experience details
-      const experienceData = await experienceApi.getById(id!);
-      setExperience(experienceData);
-      
-      // Fetch available dates
-      const dates = await experienceApi.getAvailableDates(id!);
-      setAvailableDates(dates);
-      
+      const response = await experienceApi.getById(id!);
+      setExperience(response.data);
+
+      // Get available dates
+      const datesResponse = await experienceApi.getAvailableDates(id!);
+      setAvailableDates(datesResponse.data);
+
       // Auto-select first available date
-      if (dates && dates.length > 0) {
-        setSelectedDate(dates[0]);
-      } else {
-        toast.error('No available dates for this experience');
+      if (datesResponse.data.length > 0) {
+        setSelectedDate(datesResponse.data[0]);
       }
-      
     } catch (error: any) {
-      console.error('Error fetching experience:', error);
       toast.error(error.response?.data?.message || 'Failed to load experience');
       navigate('/experiences');
     } finally {
@@ -73,46 +64,21 @@ export default function ExperienceDetails() {
   };
 
   const fetchSlotsByDate = async () => {
-    if (!selectedDate) return;
-    
     try {
-      setFetchingSlots(true);
-      const slots = await experienceApi.getSlotsByDate(id!, selectedDate);
-      
-      console.log('Slots fetched:', slots); // Debug log
-      
-      // Handle both array and object responses
-      const slotsArray = Array.isArray(slots) ? slots : slots.slots || [];
-      setAvailableSlots(slotsArray);
-      
-      // Reset selected slot when date changes
-      setSelectedSlot(null);
-      
-      // Auto-select first available slot if any
-      if (slotsArray.length > 0) {
-        // Optionally auto-select first slot (uncomment if desired)
-        // setSelectedSlot(slotsArray[0]);
-      }
-      
-    } catch (error: any) {
-      console.error('Error fetching slots:', error);
-      toast.error(error.response?.data?.message || 'Failed to load time slots');
-      setAvailableSlots([]);
-    } finally {
-      setFetchingSlots(false);
+      const response = await experienceApi.getSlotsByDate(id!, selectedDate);
+      setAvailableSlots(response.data);
+      setSelectedSlot(null); // Reset slot when date changes
+    } catch (error) {
+      toast.error('Failed to load time slots');
     }
   };
 
   const handleQuantityChange = (newQuantity: number) => {
-    if (!selectedSlot) {
-      toast.error('Please select a time slot first');
-      return;
-    }
+    if (!selectedSlot) return;
     
     const maxAllowed = selectedSlot.availableSpots - selectedSlot.bookedSpots;
-    
     if (newQuantity > maxAllowed) {
-      toast.error(`Only ${maxAllowed} spots available for this slot`);
+      toast.error(`Only ${maxAllowed} spots available`);
       return;
     }
     
@@ -130,32 +96,20 @@ export default function ExperienceDetails() {
       return;
     }
 
-    if (!experience) {
-      toast.error('Experience data not loaded');
-      return;
-    }
-
-    // Validate slot availability
-    const availableSpots = selectedSlot.availableSpots - selectedSlot.bookedSpots;
-    if (quantity > availableSpots) {
-      toast.error(`Only ${availableSpots} spots available`);
-      return;
-    }
-
     // Store booking data in sessionStorage
     const bookingData = {
-      experienceId: experience._id,
-      experienceName: experience.title,
-      experienceImage: experience.image,
-      experienceLocation: experience.location,
-      experienceDuration: experience.duration,
+      experienceId: experience!._id,
+      experienceName: experience!.title,
+      experienceImage: experience!.image,
+      experienceLocation: experience!.location,
+      experienceDuration: experience!.duration,
       slotId: selectedSlot._id,
       date: selectedDate,
       timeSlot: selectedSlot.timeSlot,
       quantity,
-      price: selectedSlot.price || experience.basePrice,
-      subtotal: (selectedSlot.price || experience.basePrice) * quantity,
-      category: experience.category,
+      price: selectedSlot.price,
+      subtotal: selectedSlot.price * quantity,
+      category: experience!.category,
     };
 
     sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
@@ -167,25 +121,10 @@ export default function ExperienceDetails() {
   }
 
   if (!experience) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Experience Not Found</h2>
-          <p className="text-gray-600 mb-4">The experience you're looking for doesn't exist.</p>
-          <button
-            onClick={() => navigate('/experiences')}
-            className="px-6 py-3 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 transition"
-          >
-            Browse Experiences
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  const subtotal = selectedSlot 
-    ? (selectedSlot.price || experience.basePrice) * quantity 
-    : 0;
+  const subtotal = selectedSlot ? selectedSlot.price * quantity : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -200,45 +139,28 @@ export default function ExperienceDetails() {
           src={experience.image}
           alt={experience.title}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = '/fallback-image.jpg';
-          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-24 left-6 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all shadow-lg hover:shadow-xl z-10"
-          aria-label="Go back"
+          className="absolute top-24 left-6 bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all shadow-lg hover:shadow-xl"
         >
           <ChevronLeft className="w-6 h-6 text-gray-900" />
         </button>
 
         {/* Action Buttons */}
-        <div className="absolute top-24 right-6 flex gap-3 z-10">
+        <div className="absolute top-24 right-6 flex gap-3">
           <button
             onClick={() => setIsFavorited(!isFavorited)}
             className={`p-3 rounded-full backdrop-blur-sm transition-all shadow-lg hover:shadow-xl ${
               isFavorited ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-900 hover:bg-white'
             }`}
-            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart className={`w-6 h-6 ${isFavorited ? 'fill-white' : ''}`} />
           </button>
-          <button 
-            className="bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all shadow-lg hover:shadow-xl"
-            aria-label="Share"
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: experience.title,
-                  text: experience.description,
-                  url: window.location.href,
-                });
-              }
-            }}
-          >
+          <button className="bg-white/90 backdrop-blur-sm p-3 rounded-full hover:bg-white transition-all shadow-lg hover:shadow-xl">
             <Share2 className="w-6 h-6 text-gray-900" />
           </button>
         </div>
@@ -246,7 +168,7 @@ export default function ExperienceDetails() {
         {/* Title & Info */}
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4">
               <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${getCategoryColor(experience.category)}`}>
                 {experience.category.charAt(0).toUpperCase() + experience.category.slice(1)}
               </span>
@@ -254,8 +176,8 @@ export default function ExperienceDetails() {
                 <div className="flex items-center gap-1 bg-yellow-400 px-3 py-1.5 rounded-full">
                   <Star className="w-4 h-4 fill-gray-900 text-gray-900" />
                   <span className="font-semibold text-gray-900">{experience.rating.toFixed(1)}</span>
-                  </div>
-                )}
+                </div>
+              )}
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               {experience.title}
@@ -279,7 +201,7 @@ export default function ExperienceDetails() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Details */}
           <div className="lg:col-span-2 space-y-8">
@@ -287,52 +209,43 @@ export default function ExperienceDetails() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl p-6 sm:p-8 shadow-md"
+              className="bg-white rounded-2xl p-8 shadow-md"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Experience</h2>
               <p className="text-gray-700 leading-relaxed text-lg">{experience.description}</p>
             </motion.div>
 
             {/* What's Included */}
-            {experience.includedItems && experience.includedItems.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl p-6 sm:p-8 shadow-md"
-              >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">What's Included</h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {experience.includedItems.map((item, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-700">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl p-8 shadow-md"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">What's Included</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {experience.includedItems.map((item, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
             {/* Date Selection */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl p-6 sm:p-8 shadow-md"
+              className="bg-white rounded-2xl p-8 shadow-md"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Choose Your Date</h2>
-              {availableDates.length > 0 ? (
-                <DateSelector
-                  availableDates={availableDates}
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                />
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Info className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                  <p>No available dates found</p>
-                </div>
-              )}
+              <DateSelector
+                availableDates={availableDates}
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+              />
             </motion.div>
 
             {/* Time Slot Selection */}
@@ -341,27 +254,21 @@ export default function ExperienceDetails() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-white rounded-2xl p-6 sm:p-8 shadow-md"
+                className="bg-white rounded-2xl p-8 shadow-md"
               >
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
                   Available Time Slots for {formatDate(selectedDate)}
                 </h2>
-                
-                {fetchingSlots ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-yellow-400 border-t-transparent"></div>
-                  </div>
-                ) : availableSlots.length > 0 ? (
+                {availableSlots.length > 0 ? (
                   <TimeSlotPicker
                     slots={availableSlots}
                     selectedSlot={selectedSlot}
                     onSlotSelect={setSelectedSlot}
                   />
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <Info className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg font-medium text-gray-600">No available slots</p>
-                    <p className="text-sm text-gray-400 mt-1">Please try another date</p>
+                  <div className="text-center py-8 text-gray-500">
+                    <Info className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No available slots for this date</p>
                   </div>
                 )}
               </motion.div>
@@ -372,7 +279,7 @@ export default function ExperienceDetails() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-blue-50 rounded-2xl p-6 sm:p-8 border border-blue-100"
+              className="bg-blue-50 rounded-2xl p-8 border border-blue-100"
             >
               <div className="flex gap-3">
                 <Info className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
@@ -399,10 +306,7 @@ export default function ExperienceDetails() {
                 subtotal={subtotal}
                 onQuantityChange={handleQuantityChange}
                 onProceedToCheckout={handleProceedToCheckout}
-                maxQuantity={selectedSlot 
-                  ? selectedSlot.availableSpots - selectedSlot.bookedSpots 
-                  : experience.maxGroupSize
-                }
+                maxQuantity={selectedSlot ? selectedSlot.availableSpots - selectedSlot.bookedSpots : experience.maxGroupSize}
               />
             </div>
           </div>
