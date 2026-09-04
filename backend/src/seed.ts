@@ -15,6 +15,7 @@ const connectDB = async () => {
 };
 
 // Generate slots for next 30 days
+// Generate slots for next 30 days
 const generateSlots = (basePrice: number): Array<{
   date: Date;
   timeSlot: string;
@@ -30,14 +31,17 @@ const generateSlots = (basePrice: number): Array<{
     price: number;
   }> = [];
   const timeSlots = ['06:00 AM', '09:00 AM', '02:00 PM', '04:00 PM'];
-  
+
   for (let i = 0; i < 30; i++) {
+    // IMPORTANT: normalize to midnight UTC so no leftover time-of-day
+    // leaks into the "now >= slot.date" availability checks
     const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
     date.setDate(date.getDate() + i);
-    
+
     timeSlots.forEach(timeSlot => {
       slots.push({
-        date,
+        date: new Date(date), // clone so each slot doesn't share the same reference
         timeSlot,
         availableSpots: Math.floor(Math.random() * 8) + 8, // 8-15 spots
         bookedSpots: 0,
@@ -45,7 +49,7 @@ const generateSlots = (basePrice: number): Array<{
       });
     });
   }
-  
+
   return slots;
 };
 
