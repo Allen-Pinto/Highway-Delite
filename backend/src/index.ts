@@ -12,7 +12,7 @@ import { errorHandler, notFound } from './middleware/errorHandler';
 import experienceRoutes from './routes/experience.routes';
 import bookingRoutes from './routes/booking.routes';
 import promoRoutes from './routes/promo.routes';
-import seedRoutes from './routes/seedRoutes'; // NEW: Import seed routes
+import seedRoutes from './routes/seedRoutes';
 
 // Create Express app
 const app: Application = express();
@@ -28,12 +28,27 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://highway-delite.vercel.app',
+  'https://highway-delite-kehn.onrender.com',
+];
+
 app.use(
   cors({
-    origin: config.cors.origins,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || config.server.isDevelopment) {
+        callback(null, true);
+      } else {
+        console.log('❌ Blocked by CORS:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
@@ -87,15 +102,20 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/experiences', experienceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/promo', promoRoutes);
-app.use('/api/admin', seedRoutes); 
+app.use('/api/admin', seedRoutes);
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Welcome to BookIt API',
+    message: 'Welcome to Highway Delite API',
     version: '1.0.0',
-    docs: '/api/docs',
+    endpoints: {
+      experiences: '/api/experiences',
+      bookings: '/api/bookings',
+      promo: '/api/promo',
+      health: '/health',
+    },
   });
 });
 
@@ -113,6 +133,7 @@ app.listen(PORT, () => {
   console.log(`✅ Server running in ${config.server.nodeEnv} mode`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`📊 Health Check: http://localhost:${PORT}/health`);
+  console.log(`🔗 CORS allowed origins: ${allowedOrigins.join(', ')}`);
   console.log('🚀 ========================================');
 });
 
