@@ -31,7 +31,7 @@ app.use(helmet({
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://highway-delite.vercel.app',
+  'https://highway-delite-phi.vercel.app',
   'https://highway-delite-kehn.onrender.com',
 ];
 
